@@ -5,17 +5,16 @@
   "main": "app.js",
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "tdd": "./tdd.sh",
-    "start": "node app.js",
-    "week3": "nodemon ./week-3-middleware/app",
-    "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js",
-    "dev": "nodemon app.js"
-  },
+  "test": "jest",
+  "tdd": "./tdd.sh",
+  "start": "node app.js",
+  "dev": "nodemon app.js",
+  "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js"
+},
   "author": "Code the Dream",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^6.12.0",
+    "@prisma/client": "^7.5.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
