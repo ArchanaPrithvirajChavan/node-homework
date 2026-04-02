@@ -2,19 +2,22 @@
 
 const fs = require('fs')
 const fsPromises = require('fs/promises'); 
-// const path = require('path');
+ const path = require('path');
 
+const filePath = path.join(__dirname, 'sample-files', 'sample.txt');
 
+// 1. Create/write the file first
+fs.writeFileSync(filePath, 'Hello, async world!', 'utf8');
 // Write a sample file for demonstration
 
 // 1. Callback style
 
-    fs.readFile('./sample-files/sample.txt','utf8',(err,data)=>{
+    fs.readFile(filePath,'utf8',(err,data)=>{
     if(err){
       console.error(err)
       return;
     }
-    console.log("Callback read",data)
+    console.log("Callback read:", data)
   })
 
 
@@ -57,7 +60,7 @@ const fsPromises = require('fs/promises');
   });
 });*/
   // 2. Promise style
-     fsPromises.readFile('./sample-files/sample.txt','utf8')
+     fsPromises.readFile(filePath,'utf8')
        .then((data) => {
       console.log("promise read:",data)
      })
@@ -71,9 +74,9 @@ const fsPromises = require('fs/promises');
       // 3. Async/Await style
       async function getData(){
         try{
-        const data = await fsPromises.readFile('./sample-files/sample.txt','utf8');
+        const data = await fsPromises.readFile(filePath,'utf8');
 
-        console.log('Async/await:',data)
+        console.log('Async await read:', data)
         }
         catch(err){
         console.error(err)

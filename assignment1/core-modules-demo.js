@@ -6,11 +6,11 @@ const fspromises =require('fs/promises')
 
 // OS module
 const platform = os.platform()
-console.log("platform:",platform)
+console.log("Platform:", platform)
 const cpuInfo = os.cpus()
 console.log('CPU:',cpuInfo)
 const memory=os.totalmem()
-console.log('Memory:',memory)
+console.log("Total Memory:", memory)
 
 // Path module
 const sampleFilesDir = path.join(__dirname, 'sample-files');
@@ -21,10 +21,12 @@ console.log('Joined path:',sampleFilesDir)
 // fs.promises API
 
 async function writeFiledemo(){
+  const demoFilePath = path.join(sampleFilesDir, 'demo.txt');
+
   try {
-  const fileHandle=await fspromises.open("./demo.txt" ,'w') //file get created  
+  const fileHandle=await fspromises.open(demoFilePath ,'w') //file get created  
   await fileHandle.writeFile(" Hello from fs.promises!")
-  const data = await fspromises.readFile("./demo.txt", "utf8");
+  const data = await fspromises.readFile(demoFilePath, "utf8");
   console.log("fs.promises read:",data)
   await fileHandle.close()
 
@@ -33,52 +35,64 @@ async function writeFiledemo(){
     console.error("file not found")
   }
 }
-writeFiledemo()
 
 
-// Streams for large files- log first 40 chars of each chunk
+
+// Streams for large file
 
 async function largeFile() {
-  try {
-    const writeStream = fs.createWriteStream('./sample-files/largefile.txt', {
-      encoding: 'utf8',
-      highWaterMark: 1024
-    });
+  const largeFilePath = path.join(sampleFilesDir, 'largefile.txt');
 
-    // Write chunks using a loop
-    for (let i = 1; i <= 100; i++) {
-  const canContinue = writeStream.write('Read chunk: This is a line in a large file...\n');
-
-  if (!canContinue) {
-    await new Promise(resolve => writeStream.once('drain', resolve));
-  }
-}
-    
-    writeStream.end();
-  
-    writeStream.on('finish', () => {
-      console.log("Writing completed");
-
-      const readStream = fs.createReadStream('./sample-files/largefile.txt', {
+  return new Promise((resolve, reject) => {
+    try {
+      const writeStream = fs.createWriteStream(largeFilePath, {
         encoding: 'utf8',
-        highWaterMark: 2500
+        highWaterMark: 1024
       });
 
-      readStream.on('data', (chunk) => {
-  console.log('Chunk size:', chunk.length, 'characters');
-  // Log first 40 characters of each chunk as an example
-  console.log('First 40 chars:', chunk.slice(0, 40));
-});
-      
+      for (let i = 1; i <= 100; i++) {
+        const canContinue = writeStream.write(
+          'Read chunk: This is a line in a large file...\n'
+        );
 
-      readStream.on('end', () => {
-        console.log("Finished reading large file with streams.");
+        if (!canContinue) {
+          writeStream.once('drain', () => {});
+        }
+      }
+
+      writeStream.end();
+
+      writeStream.on('finish', () => {
+        console.log("Writing completed");
+
+        const readStream = fs.createReadStream(largeFilePath, {
+          encoding: 'utf8',
+          highWaterMark: 2500
+        });
+
+        readStream.on('data', (chunk) => {
+          console.log('Chunk size:', chunk.length, 'characters');
+          console.log('Read chunk:', chunk.slice(0, 40));
+        });
+
+        readStream.on('end', () => {
+          console.log("Finished reading large file with streams");
+          resolve(); 
+        });
+
+        readStream.on('error', reject);
       });
-    });
 
-  } catch (err) {
-    console.error(err.message);
-  }
+      writeStream.on('error', reject);
+
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+async function main() {
+  await writeFiledemo();
+  await largeFile();
 }
 
-largeFile();
+main().catch(console.error);

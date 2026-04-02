@@ -5,13 +5,12 @@
   "main": "app.js",
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "tdd": "./tdd.sh",
-    "start": "node app.js",
-    "week3": "nodemon ./week-3-middleware/app",
-    "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js",
-    "dev": "nodemon app.js"
-  },
+  "test": "jest",
+  "tdd": "./tdd.sh",
+  "start": "node app.js",
+  "dev": "nodemon app.js",
+  "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js"
+},
   "author": "Code the Dream",
   "license": "MIT",
   "dependencies": {
