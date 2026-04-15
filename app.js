@@ -8,6 +8,11 @@ app.use((req, res, next) => {
     next(); 
   }
 });
+const errorHandler = require("./middleware/error-handler");
+app.use(errorHandler); 
+const notFound =require("./middleware/not-found")
+app.use(notFound);
+
 app.get("/", (req, res) => {
 
  res.status(200).send("GET success");
@@ -15,11 +20,6 @@ app.get("/", (req, res) => {
 app.post("/testpost",(req,res)=>{
     res.status(200).send("Post success")
 })
-const errorHandler = require("./middleware/error-handler");
-
-app.use(errorHandler);
-const notFound =require("./middleware/not-found")
-app.use(notFound);
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () =>
