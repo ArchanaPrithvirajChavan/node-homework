@@ -56,12 +56,10 @@ app.use((req, res) => {
     });
 });
 app.use((err, req, res, next) => {
-    console.error(`ERROR: Error`);
-
-    res.status(500).json({
-        error: "Internal Server Error",
-        requestId: req.requestId
-    });
+  res.status(500).json({
+    error: "Internal Server Error",
+    requestId: req.requestId
+  });
 });
 const server = app.listen(3000, () =>
     console.log("Server listening on port 3000")
