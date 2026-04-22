@@ -45,10 +45,11 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
-
+app.use("/", dogsRouter);
 app.use((err, req, res, next) => {
 
     if (err.name === "ValidationError") {
+       
         console.warn(`WARN: ${err.name} - ${err.message}`);
         return res.status(400).json({
             error: err.message,
@@ -79,7 +80,7 @@ app.use((err, req, res, next) => {
         requestId: req.requestId
     });
 });
-app.use("/", dogsRouter);
+
 app.get("/error", (req, res) => {
     throw new Error("Test error");
 });
