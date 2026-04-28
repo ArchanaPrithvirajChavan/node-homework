@@ -1,5 +1,8 @@
 const express = require("express");
 const app = express();
+global.user_id = null;
+global.users = [];
+global.tasks = [];
 app.use((req, res, next) => {
    {
     console.log(`request method is: ${req.method}, path: ${req.path}, Query:`,
@@ -8,17 +11,23 @@ app.use((req, res, next) => {
     next(); 
   }
 });
-const errorHandler = require("./middleware/error-handler");
-app.use(errorHandler); 
+app.use(express.json({ limit: "1kb" }));
+
+
+const userRouter = require("./routes/userRoutes");
+app.use("/api/users", userRouter); // Actual endpoints (register, logon, logoff) are defined in userRoutes.js
+
 const notFound =require("./middleware/not-found")
 app.use(notFound);
+const errorHandler = require("./middleware/error-handler");
+app.use(errorHandler); 
 
 app.get("/", (req, res) => {
 
- res.status(200).send("GET success");
+ res.status(200).json({mssage:"GET success"});
 });
 app.post("/testpost",(req,res)=>{
-    res.status(200).send("Post success")
+    res.status(200).json({message:"POST success"});
 })
 
 const port = process.env.PORT || 3000;
@@ -42,7 +51,7 @@ async function shutdown(code = 0) {
   try {
     await new Promise(resolve => server.close(resolve));
     console.log('HTTP server closed.');
-    // If you have DB connections, close them here
+    
   } catch (err) {
     console.error('Error during shutdown:', err);
     code = 1;
@@ -52,8 +61,8 @@ async function shutdown(code = 0) {
   }
 }
 
-process.on('SIGINT', () => shutdown(0));  // ctrl+c
-process.on('SIGTERM', () => shutdown(0)); // e.g. `docker stop`
+process.on('SIGINT', () => shutdown(0));  
+process.on('SIGTERM', () => shutdown(0)); 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err);
   shutdown(1);
