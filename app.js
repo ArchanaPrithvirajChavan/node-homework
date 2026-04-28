@@ -3,6 +3,7 @@ const app = express();
 global.user_id = null;
 global.users = [];
 global.tasks = [];
+global.tasks = global.tasks || [];
 app.use((req, res, next) => {
    {
     console.log(`request method is: ${req.method}, path: ${req.path}, Query:`,
@@ -15,14 +16,17 @@ app.use(express.json({ limit: "1kb" }));
 
 
 const userRouter = require("./routes/userRoutes");
-app.use("/api/users", userRouter); // Actual endpoints (register, logon, logoff) are defined in userRoutes.js
+app.use("/api/users", userRouter);  // Actual endpoints (register, logon, logoff) are defined in userRoutes.js
+const authMiddleware = require("./middleware/auth");
+const taskRouter = require("./routes/taskRoutes"); //endpoint for taskRoutes 
+app.use("/api/tasks", authMiddleware, taskRouter);
 
 const notFound =require("./middleware/not-found")
 app.use(notFound);
 const errorHandler = require("./middleware/error-handler");
 app.use(errorHandler); 
 
-app.get("/", (req, res) => {
+app.get("/ ", (req, res) => {
 
  res.status(200).json({mssage:"GET success"});
 });
