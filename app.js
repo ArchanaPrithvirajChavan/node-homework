@@ -1,5 +1,14 @@
 const express = require("express");
 const app = express();
+const {Client}=require("pg");
+const con= new Client({
+  host:"localhost",
+  user:"postgres",
+  port:5432,
+  password:"root123",
+  database:"nodehomework"
+})
+con.connect().then(()=>console.log("connected"));
 global.user_id = null;
 global.users = [];
 global.tasks = [];
