@@ -36,7 +36,7 @@ INSERT INTO line_items (order_id, product_id, quantity)
 SELECT 
   $1,
   product_id,
-  2
+  10
 FROM (
   SELECT product_id
   FROM products
@@ -50,4 +50,4 @@ SELECT *
 FROM line_items
 WHERE order_id = 231;
 
-SELECT e.employee_id, e.first_name, e.last_name, COUNT(o.order_id)AS order_count FROM employees e JOIN orders o ON e.employee_id=o.employee_id GROUP BY e.employee_id,e.last_name HAVING COUNT(o.order_id) >5 ORDER BY e.last_name ASC;
+SELECT e.employee_id, e.first_name, e.last_name, COUNT(o.order_id)AS order_count FROM employees e JOIN orders o ON e.employee_id=o.employee_id GROUP BY e.employee_id,e.last_name,e.first_name HAVING COUNT(o.order_id) >5 ORDER BY e.last_name ASC;
