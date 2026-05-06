@@ -1,97 +1,68 @@
+const  pool  = require("../db/pg-pool");
+const bcrypt = require("bcrypt");
 const { StatusCodes } = require("http-status-codes");
-const crypto = require("crypto");
-const util = require("util");
-const { userSchema } = require("../validation/userSchema");
-const scrypt = util.promisify(crypto.scrypt);
 
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const derivedKey = await scrypt(password, salt, 64);
-  return `${salt}:${derivedKey.toString("hex")}`;
-}
-
-async function comparePassword(inputPassword, storedHash) {
-  const [salt, key] = storedHash.split(":");
-  const keyBuffer = Buffer.from(key, "hex");
-  const derivedKey = await scrypt(inputPassword, salt, 64);
-  return crypto.timingSafeEqual(keyBuffer, derivedKey);
-}
-
+// ---------------- REGISTER ----------------
 async function register(req, res) {
-    if (!global.users) global.users = [];
-    //if req body exists
-    if(!req.body){
-        return res.status(StatusCodes.BAD_REQUEST).json({message:"request body is required"})
-    }
-    //validate user input
-    const {error,value}=userSchema.validate(req.body,{abortEarly:false})
- if (error){
-    return res.status(StatusCodes.BAD_REQUEST).json({
-        message:error.message
-    })
- }
- //hash pasword before saving req.body
- const hashedPassword=await hashPassword(value.password);
+  const { name, email, password } = req.body;
 
-    const newUser = { ...value,password:hashedPassword};
-
-    global.users.push(newUser);
-    global.user_id = newUser.email;
-    //remove password before res
-    const {password, ...sanitizeUser} =newUser
-    return res.status(StatusCodes.CREATED).json({
-        message: "User registered successfully",
-        user: sanitizeUser
-    });
-}
-
-async function logon(req, res) {
-  //if request body exists
-  if (!req.body) {
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      message: "Request body is required",
-    });
-  }
-
-  const users = global.users || [];
-
-  // Find user by email first
-  const user = users.find((u) => u.email === req.body.email);
-
-  // If email not found
-  if (!user) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({
-      message: "wrong userid or password",
-    });
-  }
-
-  //  Compare entered password with stored hashed password
-  const passwordMatch = await comparePassword(
-    req.body.password,
-    user.password
+  const existing = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
   );
 
-  // If password is correct
-  if (passwordMatch) {
-    global.user_id = user.email;
-
-    return res.status(StatusCodes.OK).json({
-      name: user.name,
-    });
+  if (existing.rows.length > 0) {
+    return res.status(400).json({ message: "User already exists" });
   }
 
-  //  Password incorrect
-  return res.status(StatusCodes.UNAUTHORIZED).json({
-    message: "wrong userid or password",
+  const hashed = await bcrypt.hash(password, 10);
+
+  const result = await pool.query(
+    `INSERT INTO users (name, email, hashed_password)
+     VALUES ($1, $2, $3)
+     RETURNING id, name, email`,
+    [name, email, hashed]
+  );
+
+  return res.status(201).json(result.rows[0]);
+}
+
+// ---------------- LOGON ----------------
+async function logon(req, res) {
+  const { email, password } = req.body;
+
+  const result = await pool.query(
+    "SELECT * FROM users WHERE email = $1",
+    [email]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  const user = result.rows[0];
+
+  const match = await bcrypt.compare(password, user.hashed_password);
+
+  if (!match) {
+    return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  return res.status(200).json({
+    id: user.id,
+    name: user.name,
+    email: user.email,
   });
 }
 
-function logoff(req, res) {
-    global.user_id = null;
 
-    return res.status(200).json({
-        message: "Logged off successfully"
-    });
+function logoff(req, res) {
+  global.user_id = null;
+  return res.status(200).json({ message: "Logged off" });
 }
 
-module.exports = { register, logon, logoff,hashPassword,comparePassword};
+module.exports = {
+  register,
+  logon,
+  logoff,
+};

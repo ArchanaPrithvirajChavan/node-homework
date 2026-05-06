@@ -1,20 +1,10 @@
-const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
-
-global.tasks = global.tasks || [];
-
-const taskCounter = (() => {
-  let lastTaskNumber = 0;
-  return () => ++lastTaskNumber;
-})();
+const { taskSchema } = require("../validation/taskSchema");
+const  pool  = require("../db/pg-pool");
 
 // -------------------- CREATE --------------------
-function create(req, res) {
+async function create(req, res) {
   if (!global.user_id) {
     return res.status(401).json({ message: "Login required" });
-  }
-
-  if (!req.body) {
-    return res.status(400).json({ message: "Request body is required" });
   }
 
   const { error, value } = taskSchema.validate(req.body, {
@@ -25,123 +15,115 @@ function create(req, res) {
     return res.status(400).json({ message: error.message });
   }
 
-  const newTask = {
-    ...value,
-    id: taskCounter(),
-    userId: global.user_id,
-  };
+  const result = await pool.query(
+    `INSERT INTO tasks (title, is_completed, user_id)
+     VALUES ($1, $2, $3)
+     RETURNING id, title, is_completed`,
+    [
+      value.title,
+      value.isCompleted ?? false,   
+      global.user_id,
+    ]
+  );
 
-  global.tasks.push(newTask);
-
-  const { userId, ...sanitizedTask } = newTask;
-
-  return res.status(201).json(sanitizedTask);
+  return res.status(201).json(result.rows[0]);
 }
 
 // -------------------- INDEX --------------------
-function index(req, res) {
+async function index(req, res) {
   if (!global.user_id) {
     return res.status(401).json({ message: "Login required" });
   }
 
-  const userTasks = global.tasks.filter(
-    (t) => t.userId === global.user_id
+  const result = await pool.query(
+    `SELECT id, title, is_completed
+     FROM tasks
+     WHERE user_id = $1`,
+    [global.user_id]
   );
 
-  if (userTasks.length === 0) {
-    return res.status(404).json([]);
+  // IMPORTANT: tests expect 404 when empty
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "No tasks found" });
   }
 
-  const sanitized = userTasks.map(({ userId, ...rest }) => rest);
-
-  return res.status(200).json(sanitized);
-}
-
-// -------------------- UPDATE --------------------
-function update(req, res) {
-  if (!global.user_id) {
-    return res.status(401).json({ message: "Login required" });
-  }
-
-  const index = global.tasks.findIndex(
-    (t) => t.id === Number(req.params.id)
-  );
-
-  if (index === -1) {
-    return res.status(404).json({ message: "Task not found" });
-  }
-
-  if (global.tasks[index].userId !== global.user_id) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
-
-  
-  const { error, value } = patchTaskSchema.validate(req.body, {
-    abortEarly: false,
-  });
-
-  if (error) {
-    return res.status(400).json({ message: error.message });
-  }
-
-  global.tasks[index] = {
-    ...global.tasks[index],
-    ...value,
-  };
-
-  const { userId, ...sanitized } = global.tasks[index];
-
-  return res.status(200).json(sanitized);
-}
-
-// -------------------- DELETE --------------------
-function deleteTask(req, res) {
-  if (!global.user_id) {
-    return res.status(401).json({ message: "Login required" });
-  }
-
-  const taskId = Number(req.params.id);
-
-  const index = global.tasks.findIndex((t) => t.id === taskId);
-
-  if (index === -1) {
-    return res.status(404).json({ message: "Task not found" });
-  }
-
-  if (global.tasks[index].userId !== global.user_id) {
-    return res.status(403).json({ message: "Forbidden" });
-  }
-
-  const deletedTask = global.tasks[index];
-
-  global.tasks.splice(index, 1);
-
-  const { userId, ...sanitized } = deletedTask;
-
-  return res.status(200).json(sanitized);
+  return res.status(200).json(result.rows);
 }
 
 // -------------------- SHOW --------------------
-function show(req, res) {
+async function show(req, res) {
   if (!global.user_id) {
     return res.status(401).json({ message: "Login required" });
   }
 
-  const task = global.tasks.find(
-    (t) =>
-      t.id === Number(req.params.id) &&
-      t.userId === global.user_id
+  const result = await pool.query(
+    `SELECT id, title, is_completed
+     FROM tasks
+     WHERE id = $1 AND user_id = $2`,
+    [req.params.id, global.user_id]
   );
 
-  if (!task) {
+  if (result.rows.length === 0) {
     return res.status(404).json({ message: "Task not found" });
   }
 
-  const { userId, ...sanitizedTask } = task;
-
-  return res.status(200).json(sanitizedTask);
+  return res.status(200).json(result.rows[0]);
 }
 
+// -------------------- UPDATE --------------------
+async function update(req, res) {
+  if (!global.user_id) {
+    return res.status(401).json({ message: "Login required" });
+  }
+
+  const fields = req.body;
+
+  const keys = Object.keys(fields);
+  const values = Object.values(fields);
+
+  const setClause = keys
+    .map((key, i) =>
+      key === "isCompleted"
+        ? `is_completed = $${i + 1}`
+        : `${key} = $${i + 1}`
+    )
+    .join(", ");
+
+  const result = await pool.query(
+    `UPDATE tasks
+     SET ${setClause}
+     WHERE id = $${keys.length + 1}
+     AND user_id = $${keys.length + 2}
+     RETURNING id, title, is_completed`,
+    [...values, req.params.id, global.user_id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Task not found" });
+  }
+
+  return res.status(200).json(result.rows[0]);
+}
+
+// -------------------- DELETE --------------------
+async function deleteTask(req, res) {
+  if (!global.user_id) {
+    return res.status(401).json({ message: "Login required" });
+  }
+
+  const result = await pool.query(
+    `DELETE FROM tasks
+     WHERE id = $1 AND user_id = $2
+     RETURNING id, title`,
+    [req.params.id, global.user_id]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ message: "Task not found" });
+  }
+
+  return res.status(200).json(result.rows[0]);
+}
 module.exports = {
   create,
   update,
