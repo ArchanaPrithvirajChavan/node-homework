@@ -1,12 +1,11 @@
-//const  pool  = require("../db/pg-pool");
+
 const prisma = require("../db/prisma")
 const bcrypt = require("bcrypt");
-//const { StatusCodes } = require("http-status-codes");
 
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
   const { name, email, password } = req.body;
-  
+
  const existingemail=await prisma.user.findUnique({where:
   {email},
  })
@@ -28,7 +27,7 @@ async function register(req, res, next) {
         email: true,
       },
     });
-
+     global.user_id =user.id; 
     return res.status(201).json(user);
 
   } catch (error) {

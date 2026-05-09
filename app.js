@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const prisma =require("./db/prisma")
 
-const pool = require("./db/pg-pool");
+
 
 // Middleware imports
 const userRouter = require("./routes/userRoutes");

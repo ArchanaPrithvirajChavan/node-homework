@@ -1,5 +1,5 @@
 const { taskSchema } = require("../validation/taskSchema");
-//const  pool  = require("../db/pg-pool");
+
 const  prisma  = require("../db/prisma");
 
 // -------------------- CREATE --------------------
@@ -83,7 +83,7 @@ async function show(req, res) {
   if (!task) {
     return res.status(404).json({ message: "Task not found" });
   }
-
+    
   return res.status(200).json(task);
 }
 
