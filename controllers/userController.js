@@ -1,48 +1,62 @@
-const  pool  = require("../db/pg-pool");
+//const  pool  = require("../db/pg-pool");
+const prisma = require("../db/prisma")
 const bcrypt = require("bcrypt");
-const { StatusCodes } = require("http-status-codes");
+//const { StatusCodes } = require("http-status-codes");
 
 // ---------------- REGISTER ----------------
-async function register(req, res) {
+async function register(req, res, next) {
   const { name, email, password } = req.body;
+  
+ const existingemail=await prisma.user.findUnique({where:
+  {email},
+ })
+ if (existingemail){
+   return res.status(400).json({message:"email already exist"})
+ }
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  const existing = await pool.query(
-    "SELECT * FROM users WHERE email = $1",
-    [email]
-  );
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        hashedPassword,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
 
-  if (existing.rows.length > 0) {
-    return res.status(400).json({ message: "User already exists" });
+    return res.status(201).json(user);
+
+  } catch (error) {
+    console.log("FULL ERROR:", error);
+
+    return res.status(500).json({
+      message: error.message,
+    });
   }
-
-  const hashed = await bcrypt.hash(password, 10);
-
-  const result = await pool.query(
-    `INSERT INTO users (name, email, hashed_password)
-     VALUES ($1, $2, $3)
-     RETURNING id, name, email`,
-    [name, email, hashed]
-  );
-
-  return res.status(201).json(result.rows[0]);
 }
 
 // ---------------- LOGON ----------------
 async function logon(req, res) {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
-  const result = await pool.query(
-    "SELECT * FROM users WHERE email = $1",
-    [email]
-  );
+  email = email.toLowerCase();
 
-  if (result.rows.length === 0) {
+const user = await prisma.user.findUnique({ where: { email }});
+                        
+  
+
+  if (!user) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
-  const user = result.rows[0];
 
-  const match = await bcrypt.compare(password, user.hashed_password);
+
+  const match = await bcrypt.compare(password, user.hashedPassword);
 
   if (!match) {
     return res.status(401).json({ message: "Invalid credentials" });
