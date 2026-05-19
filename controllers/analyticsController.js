@@ -21,16 +21,16 @@ async function getUserAnalytics(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // TASK STATS (groupBy)
+    // TASK STATS
     const taskStats = await prisma.task.groupBy({
       by: ["isCompleted"],
       where: { userId },
       _count: {
-        isCompleted: true,
+        id: true,
       },
     });
 
-    
+    // IMPORTANT: Prisma relation name is usually "User" not "user"
     const recentTasks = await prisma.task.findMany({
       where: { userId },
       select: {
@@ -39,7 +39,7 @@ async function getUserAnalytics(req, res) {
         isCompleted: true,
         priority: true,
         createdAt: true,
-        user: {
+        User: {
           select: {
             name: true,
           },
@@ -68,6 +68,7 @@ async function getUserAnalytics(req, res) {
       recentTasks,
       weeklyProgress,
     });
+
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
@@ -120,7 +121,9 @@ async function searchTasks(req, res) {
     return res.status(200).json({
       results: searchResults,
       query: searchQuery,
+      count: searchResults.length,
     });
+
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
@@ -139,15 +142,13 @@ async function getUsersWithStats(req, res) {
     const totalUsers = await prisma.user.count();
 
     const users = await prisma.user.findMany({
-      skip, 
+      skip,
       take: limit,
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
       include: {
         _count: {
           select: {
-            task: true, 
+            task: true,
           },
         },
         task: {
@@ -155,9 +156,7 @@ async function getUsersWithStats(req, res) {
             isCompleted: false,
           },
           take: 5,
-          orderBy: {
-            createdAt: "desc",
-          },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -168,7 +167,9 @@ async function getUsersWithStats(req, res) {
       email: user.email,
       createdAt: user.createdAt,
       _count: user._count,
-      Task: user.task, 
+
+      // IMPORTANT FIX: must match Prisma relation name
+      Task: user.task,
     }));
 
     const totalPages = Math.ceil(totalUsers / limit);
@@ -184,6 +185,7 @@ async function getUsersWithStats(req, res) {
         hasPrev: page > 1,
       },
     });
+
   } catch (error) {
     console.error("getUsersWithStats error:", error);
     return res.status(500).json({
