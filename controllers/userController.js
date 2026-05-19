@@ -30,17 +30,14 @@ async function register(req, res, next) {
       const welcomeTasksData = [
         {
           title: "Complete your profile",
-          priority: "medium",
           userId: newUser.id,
         },
         {
           title: "Add your first task",
-          priority: "high",
           userId: newUser.id,
         },
         {
           title: "Explore the app",
-          priority: "low",
           userId: newUser.id,
         },
       ];
@@ -60,16 +57,13 @@ async function register(req, res, next) {
         select: {
           id: true,
           title: true,
-          priority: true,
           isCompleted: true,
         },
       });
 
-  
       return { user: newUser, welcomeTasks };
     });
- console.log("REGISTER HIT");
-    console.log("RESULT:", result);
+ 
     global.user_id = result.user.id;
 
     return res.status(201).json({
@@ -78,13 +72,15 @@ async function register(req, res, next) {
       transactionStatus: "success",
     });
   } catch (err) {
-    if (err.code === "P2002") {
+    if (err && err.code === "P2002") {
       return res.status(400).json({
         message: "Email already registered",
       });
     }
 
-    return next(err);
+  
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 }
 

@@ -1,6 +1,6 @@
 const Joi = require("joi");
 
-// ---------------- TASK CREATE SCHEMA ----------------
+// ----------- CREATE SCHEMA ----------------
 const taskSchema = Joi.object({
   title: Joi.string().trim().min(3).max(30).required(),
 
@@ -11,7 +11,7 @@ const taskSchema = Joi.object({
     .default("medium"),
 });
 
-// ---------------- TASK PATCH SCHEMA ----------------
+// --------- PATCH SCHEMA ----------------
 const patchTaskSchema = Joi.object({
   title: Joi.string().trim().min(3).max(30),
 

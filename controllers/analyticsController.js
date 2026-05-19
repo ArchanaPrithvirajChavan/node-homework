@@ -37,7 +37,7 @@ async function getUserAnalytics(req, res) {
         isCompleted: true,
         priority: true,
         createdAt: true,
-        User: {
+        user: {
           select: {
             name: true,
           },
@@ -51,7 +51,8 @@ async function getUserAnalytics(req, res) {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const weeklyProgress = await prisma.task.groupBy({
-      by: ["createdAt"],
+      
+      by: ["isCompleted"],
       where: {
         userId,
         createdAt: { gte: oneWeekAgo },
@@ -61,9 +62,16 @@ async function getUserAnalytics(req, res) {
       },
     });
 
+    
+    const recentTasksResp = recentTasks.map((t) => {
+      const copy = Object.assign({}, t, { User: t.user });
+      delete copy.user;
+      return copy;
+    });
+
     return res.status(200).json({
       taskStats,
-      recentTasks,
+      recentTasks: recentTasksResp,
       weeklyProgress,
     });
 
@@ -165,7 +173,7 @@ async function getUsersWithStats(req, res) {
       email: user.email,
       createdAt: user.createdAt,
 
-      // IMPORTANT: test expects Task (capital T)
+    
       _count: {
         Task: user._count.task,
       },

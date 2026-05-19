@@ -30,7 +30,7 @@ async function create(req, res) {
         isCompleted: true,
         priority: true,
         createdAt: true,
-        User: {
+        user: {
           select: {
             name: true,
             email: true,
@@ -39,7 +39,13 @@ async function create(req, res) {
       },
     });
 
-    return res.status(201).json(task);
+  // Prisma returns the relation as `user` (lowercase). The tests expect a
+  // top-level `User` property, so copy the relation to `User` to match the
+  // expected response shape.
+  const taskResp = Object.assign({}, task, { User: task.user });
+  delete taskResp.user;
+
+  return res.status(201).json(taskResp);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Internal server error" });
@@ -158,7 +164,7 @@ async function index(req, res) {
       isCompleted: true,
       priority: true,
       createdAt: true,
-      User: {
+      user: {
         select: {
           name: true,
           email: true,
@@ -180,8 +186,15 @@ async function index(req, res) {
     hasPrev: page > 1,
   };
 
+
+  const tasksResp = tasks.map((t) => {
+    const copy = Object.assign({}, t, { User: t.user });
+    delete copy.user;
+    return copy;
+  });
+
   return res.status(200).json({
-    tasks,
+    tasks: tasksResp,
     pagination,
   });
 }
@@ -205,7 +218,7 @@ async function show(req, res) {
       isCompleted: true,
       priority: true,
       createdAt: true,
-      User: {
+      user: {
         select: {
           name: true,
           email: true,
@@ -218,7 +231,11 @@ async function show(req, res) {
     return res.status(404).json({ message: "Task not found" });
   }
 
-  return res.status(200).json(task);
+  
+  const taskResp = Object.assign({}, task, { User: task.user });
+  delete taskResp.user;
+
+  return res.status(200).json(taskResp);
 }
 
 // -------------------- UPDATE --------------------
