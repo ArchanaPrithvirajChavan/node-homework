@@ -28,24 +28,26 @@ async function register(req, res, next) {
 
       // 2. Welcome tasks
       const welcomeTasksData = [
-        {
-          title: "Complete your profile",
-          userId: newUser.id,
-        },
-        {
-          title: "Add your first task",
-          userId: newUser.id,
-        },
-        {
-          title: "Explore the app",
-          userId: newUser.id,
-        },
-      ];
+  {
+    title: "Complete your profile",
+    priority: "medium",
+    userId: newUser.id,
+  },
+  {
+    title: "Add your first task",
+    priority: "high",
+    userId: newUser.id,
+  },
+  {
+    title: "Explore the app",
+    priority: "low",
+    userId: newUser.id,
+  },
+];
 
-      await tx.task.createMany({
-        data: welcomeTasksData,
-      });
-
+await tx.task.createMany({
+  data: welcomeTasksData,
+});
       // 3. Fetch created tasks
       const welcomeTasks = await tx.task.findMany({
         where: {
