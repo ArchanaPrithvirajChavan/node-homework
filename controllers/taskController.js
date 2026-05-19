@@ -19,7 +19,8 @@ async function create(req, res) {
     const task = await prisma.task.create({
       data: {
         title: value.title,
-        isCompleted: value.isCompleted || false,
+        isCompleted: value.isCompleted ?? false,
+        priority: value.priority || "medium",
         userId: global.user_id,
       },
       select: {
@@ -27,13 +28,13 @@ async function create(req, res) {
         title: true,
         isCompleted: true,
         priority: true,
-      createdAt: true,
-      User: {
-        select: {
-          name: true,
-          email: true,
+        createdAt: true,
+        User: {
+          select: {
+            name: true,
+            email: true,
+          },
         },
-      },
       },
     });
 
@@ -46,6 +47,10 @@ async function create(req, res) {
 
 // -------------------- BULK CREATE --------------------
 exports.bulkCreate = async (req, res, next) => {
+  if (!global.user_id) {
+    return res.status(401).json({ message: "Login required" });
+  }
+
   const { tasks } = req.body;
 
   if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
@@ -68,7 +73,7 @@ exports.bulkCreate = async (req, res, next) => {
 
     validTasks.push({
       title: value.title,
-      isCompleted: value.isCompleted || false,
+      isCompleted: value.isCompleted ?? false,
       priority: value.priority || "medium",
       userId: global.user_id,
     });
@@ -114,21 +119,22 @@ async function index(req, res) {
     return { createdAt: "desc" };
   };
 
-let page = parseInt(req.query.page) || 1;
-let limit = parseInt(req.query.limit) || 10;
-const skip = (page - 1) * limit;
-// validate page and limit
-if (page < 1) {
-  return res.status(400).json({
-    message: "Page must be greater than or equal to 1"
-  });
-}
-if (limit < 1 || limit > 100) {
-  return res.status(400).json({
-    message: "Limit must be between 1 and 100"
-  });
-}
-  
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  if (page < 1) {
+    return res.status(400).json({
+      message: "Page must be greater than or equal to 1",
+    });
+  }
+
+  if (limit < 1 || limit > 100) {
+    return res.status(400).json({
+      message: "Limit must be between 1 and 100",
+    });
+  }
+
   const whereClause = {
     userId: global.user_id,
   };
@@ -159,10 +165,6 @@ if (limit < 1 || limit > 100) {
       },
     },
   });
-
-  if (tasks.length === 0) {
-    return res.status(404).json({ message: "No tasks found" });
-  }
 
   const totalTasks = await prisma.task.count({
     where: whereClause,
@@ -225,7 +227,14 @@ async function update(req, res, next) {
   }
 
   const { id } = req.params;
-  const fields = req.body;
+
+  const { error, value } = taskSchema.validate(req.body, {
+    abortEarly: false,
+  });
+
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
 
   try {
     const updatedTask = await prisma.task.update({
@@ -235,11 +244,13 @@ async function update(req, res, next) {
           userId: global.user_id,
         },
       },
-      data: fields,
+      data: value,
       select: {
         id: true,
         title: true,
         isCompleted: true,
+        priority: true,
+        createdAt: true,
       },
     });
 
