@@ -134,7 +134,7 @@ async function getUsersWithStats(req, res) {
 
     
     const users = await prisma.user.findMany({
-      skip,
+      skip:0,
       take: limit,
       orderBy: {
         createdAt: "desc",
@@ -142,10 +142,10 @@ async function getUsersWithStats(req, res) {
       include: {
         _count: {
           select: {
-            Task: true, 
+            task: true, 
           },
         },
-        Task: {
+        task: {
           where: {
             isCompleted: false, 
           },
@@ -171,16 +171,17 @@ async function getUsersWithStats(req, res) {
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.status(200).json({
-      data: formattedUsers,
-      pagination: {
-        totalItems: totalUsers,
-        totalPages,
-        currentPage: page,
-        pageSize: limit,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    });
+  users: formattedUsers,
+
+  pagination: {
+    page,
+    limit,
+    total: totalUsers,
+    pages: totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  },
+});
   } catch (error) {
     console.error("getUsersWithStats error:", error);
     return res.status(500).json({

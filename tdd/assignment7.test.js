@@ -41,7 +41,7 @@ describe("testing logon, register, and logoff with transactions", () => {
     const req = httpMocks.createRequest({
       method: "POST",
       body: {
-        email: "jim0@sample.com",
+        email: "jim@sample.com",
         name: "Jim",
         password: "Pa$$word20",
       },
@@ -58,7 +58,7 @@ describe("testing logon, register, and logoff with transactions", () => {
 
     // Get the created user from database
     user1 = await prisma.user.findUnique({
-      where: { email: "jim0@sample.com" },
+      where: { email: "jim@sample.com" },
     });
 
     // Verify welcome tasks were created

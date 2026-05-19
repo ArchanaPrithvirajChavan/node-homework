@@ -8,12 +8,10 @@ async function register(req, res, next) {
 
     email = email.toLowerCase().trim();
 
-  
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
-
-
+      // 1. Create user
       const newUser = await tx.user.create({
         data: {
           name,
@@ -28,6 +26,7 @@ async function register(req, res, next) {
         },
       });
 
+      // 2. Welcome tasks
       const welcomeTasksData = [
         {
           title: "Complete your profile",
@@ -50,33 +49,33 @@ async function register(req, res, next) {
         data: welcomeTasksData,
       });
 
+      // 3. Fetch created tasks
       const welcomeTasks = await tx.task.findMany({
         where: {
           userId: newUser.id,
           title: {
-            in: welcomeTasksData.map(t => t.title),
+            in: welcomeTasksData.map((t) => t.title),
           },
         },
         select: {
           id: true,
           title: true,
-          isCompleted: true,
-          userId: true,
           priority: true,
+          isCompleted: true,
         },
       });
 
+  
       return { user: newUser, welcomeTasks };
     });
 
     global.user_id = result.user.id;
 
     return res.status(201).json({
-  user: result.user,
-  welcomeTasks: result.welcomeTasks,
-  transactionStatus: "success",
-});
-
+      user: result.user,
+      welcomeTasks: result.welcomeTasks,
+      transactionStatus: "success",
+    });
   } catch (err) {
     if (err.code === "P2002") {
       return res.status(400).json({
@@ -123,7 +122,6 @@ async function logon(req, res, next) {
       name: user.name,
       email: user.email,
     });
-
   } catch (err) {
     return next(err);
   }
