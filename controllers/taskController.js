@@ -20,7 +20,7 @@ async function create(req, res) {
       data: {
         title: value.title,
         isCompleted: value.isCompleted ?? false,
-        priority: value.priority || "high",
+        priority: value.priority || "medium",
         userId: global.user_id,
       },
       select: {
