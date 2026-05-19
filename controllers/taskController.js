@@ -110,7 +110,7 @@ async function index(req, res) {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  // FIXED: correct field name
+  
   const whereClause = {
     userId: global.user_id,
   };
@@ -146,7 +146,7 @@ async function index(req, res) {
     return res.status(404).json({ message: "No tasks found" });
   }
 
-  const totalTasks = await prisma.task.count({
+  /*const totalTasks = await prisma.task.count({
     where: whereClause,
   });
 
@@ -157,12 +157,9 @@ async function index(req, res) {
     pages: Math.ceil(totalTasks / limit),
     hasNext: page * limit < totalTasks,
     hasPrev: page > 1,
-  };
+  };*/
 
-  return res.status(200).json({
-    tasks,
-    pagination,
-  });
+ return res.status(200).json(tasks);
 }
 
 // -------------------- SHOW --------------------
