@@ -36,7 +36,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe.only("testing logon, register, and logoff with transactions", () => {
+describe("testing logon, register, and logoff with transactions", () => {
   it("You can register a user with welcome tasks.", async () => {
     const req = httpMocks.createRequest({
       method: "POST",

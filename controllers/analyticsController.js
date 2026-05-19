@@ -21,7 +21,6 @@ async function getUserAnalytics(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // TASK STATS
     const taskStats = await prisma.task.groupBy({
       by: ["isCompleted"],
       where: { userId },
@@ -30,7 +29,6 @@ async function getUserAnalytics(req, res) {
       },
     });
 
-    // IMPORTANT: Prisma relation name is usually "User" not "user"
     const recentTasks = await prisma.task.findMany({
       where: { userId },
       select: {
@@ -166,9 +164,12 @@ async function getUsersWithStats(req, res) {
       name: user.name,
       email: user.email,
       createdAt: user.createdAt,
-      _count: user._count,
 
-      // IMPORTANT FIX: must match Prisma relation name
+      // IMPORTANT: test expects Task (capital T)
+      _count: {
+        Task: user._count.task,
+      },
+
       Task: user.task,
     }));
 
@@ -187,7 +188,7 @@ async function getUsersWithStats(req, res) {
     });
 
   } catch (error) {
-    console.error("getUsersWithStats error:", error);
+    console.error(error);
     return res.status(500).json({
       message: "Internal server error",
     });
