@@ -106,10 +106,20 @@ async function index(req, res) {
     return { createdAt: "desc" };
   };
 
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
-
+let page = parseInt(req.query.page) || 1;
+let limit = parseInt(req.query.limit) || 10;
+const skip = (page - 1) * limit;
+// validate page and limit
+if (page < 1) {
+  return res.status(400).json({
+    message: "Page must be greater than or equal to 1"
+  });
+}
+if (limit < 1 || limit > 100) {
+  return res.status(400).json({
+    message: "Limit must be between 1 and 100"
+  });
+}
   
   const whereClause = {
     userId: global.user_id,

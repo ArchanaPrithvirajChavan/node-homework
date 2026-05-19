@@ -10,12 +10,11 @@ const taskRouter = require("./routes/taskRoutes");
 const authMiddleware = require("./middleware/auth");
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
-
-// ========================
+const analyticsRoutes=require("./routes/analyticsRoutes")
 global.user_id = null;
 global.users = [];
 global.tasks = [];
-// ========================
+
 
 // Logger middleware
 app.use((req, res, next) => {
@@ -31,7 +30,7 @@ app.use(express.json({ limit: "1kb" }));
 // Routes
 app.use("/api/users", userRouter);
 app.use("/api/tasks", authMiddleware, taskRouter);
-
+app.use("/api/analytics", authMiddleware, analyticsRoutes)
 // Test routes
 app.get("/", (req, res) => {
   res.status(200).json({ message: "GET success" });
