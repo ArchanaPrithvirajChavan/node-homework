@@ -11,7 +11,15 @@ async function getUserAnalytics(req, res) {
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user id" });
     }
+  const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
 
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
     const taskStats = await prisma.task.groupBy({
       by: ["isCompleted"],
       where: { userId },
@@ -62,7 +70,7 @@ async function getUserAnalytics(req, res) {
     // ---------------- SEARCH ----------------
     async function searchTasks(req, res) {
   try {
-    const searchQuery = req.query.search;
+    const searchQuery = req.query.q;
 
     if (!searchQuery || searchQuery.trim().length < 2) {
       return res.status(400).json({
@@ -113,11 +121,74 @@ async function getUserAnalytics(req, res) {
     });
   }
 }
+
+
 async function getUsersWithStats(req, res) {
-  return res.status(200).json({
-    message: "To be implemented based on assignment requirements"
-  });
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    
+    const totalUsers = await prisma.user.count();
+
+    
+    const users = await prisma.user.findMany({
+      skip,
+      take: limit,
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        _count: {
+          select: {
+            Task: true, 
+          },
+        },
+        Task: {
+          where: {
+            isCompleted: false, 
+          },
+          take: 5, 
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
+    });
+
+  
+    const formattedUsers = users.map((user) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+      _count: user._count,
+      Task: user.Task,
+    }));
+
+
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    return res.status(200).json({
+      data: formattedUsers,
+      pagination: {
+        totalItems: totalUsers,
+        totalPages,
+        currentPage: page,
+        pageSize: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("getUsersWithStats error:", error);
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 }
+
 module.exports = {
   getUserAnalytics,
   getUsersWithStats,

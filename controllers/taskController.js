@@ -26,6 +26,14 @@ async function create(req, res) {
         id: true,
         title: true,
         isCompleted: true,
+        priority: true,
+      createdAt: true,
+      User: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
       },
     });
 
@@ -192,6 +200,14 @@ async function show(req, res) {
       id: true,
       title: true,
       isCompleted: true,
+      priority: true,
+      createdAt: true,
+      User: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
