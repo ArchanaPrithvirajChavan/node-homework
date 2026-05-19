@@ -1,4 +1,5 @@
-const { taskSchema } = require("../validation/taskSchema");
+const { taskSchema,patchTaskSchema } = require("../validation/taskSchema");
+
 const prisma = require("../db/prisma");
 
 // -------------------- CREATE --------------------
@@ -228,13 +229,18 @@ async function update(req, res, next) {
 
   const { id } = req.params;
 
-  const { error, value } = taskSchema.validate(req.body, {
+  const { error, value } = patchTaskSchema.validate(req.body, {
     abortEarly: false,
   });
 
   if (error) {
     return res.status(400).json({ message: error.message });
   }
+
+  const data = {};
+  if (value.title !== undefined) data.title = value.title;
+  if (value.isCompleted !== undefined) data.isCompleted = value.isCompleted;
+  if (value.priority !== undefined) data.priority = value.priority;
 
   try {
     const updatedTask = await prisma.task.update({
@@ -244,7 +250,7 @@ async function update(req, res, next) {
           userId: global.user_id,
         },
       },
-      data: value,
+      data,
       select: {
         id: true,
         title: true,
@@ -262,6 +268,7 @@ async function update(req, res, next) {
     return next(err);
   }
 }
+
 
 // -------------------- DELETE --------------------
 async function deleteTask(req, res, next) {

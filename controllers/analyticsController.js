@@ -1,5 +1,6 @@
 const prisma = require("../db/prisma");
 
+// ---------------- GET USER ANALYTICS ----------------
 async function getUserAnalytics(req, res) {
   try {
     if (!global.user_id) {
@@ -11,21 +12,25 @@ async function getUserAnalytics(req, res) {
     if (isNaN(userId)) {
       return res.status(400).json({ message: "Invalid user id" });
     }
-  const user = await prisma.user.findUnique({
+
+    const user = await prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+      return res.status(404).json({ message: "User not found" });
     }
+
+    // TASK STATS (groupBy)
     const taskStats = await prisma.task.groupBy({
       by: ["isCompleted"],
       where: { userId },
-      _count: { id: true },
+      _count: {
+        isCompleted: true,
+      },
     });
 
+    
     const recentTasks = await prisma.task.findMany({
       where: { userId },
       select: {
@@ -34,8 +39,10 @@ async function getUserAnalytics(req, res) {
         isCompleted: true,
         priority: true,
         createdAt: true,
-        User: {
-          select: { name: true },
+        user: {
+          select: {
+            name: true,
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -51,7 +58,9 @@ async function getUserAnalytics(req, res) {
         userId,
         createdAt: { gte: oneWeekAgo },
       },
-      _count: { id: true },
+      _count: {
+        id: true,
+      },
     });
 
     return res.status(200).json({
@@ -59,7 +68,6 @@ async function getUserAnalytics(req, res) {
       recentTasks,
       weeklyProgress,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
@@ -67,8 +75,9 @@ async function getUserAnalytics(req, res) {
     });
   }
 }
-    // ---------------- SEARCH ----------------
-    async function searchTasks(req, res) {
+
+// ---------------- SEARCH TASKS ----------------
+async function searchTasks(req, res) {
   try {
     const searchQuery = req.query.q;
 
@@ -111,9 +120,7 @@ async function getUserAnalytics(req, res) {
     return res.status(200).json({
       results: searchResults,
       query: searchQuery,
-      count: searchResults.length,
     });
-
   } catch (error) {
     return res.status(500).json({
       message: "Server error",
@@ -122,19 +129,17 @@ async function getUserAnalytics(req, res) {
   }
 }
 
-
+// ---------------- USERS WITH STATS ----------------
 async function getUsersWithStats(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    
     const totalUsers = await prisma.user.count();
 
-    
     const users = await prisma.user.findMany({
-      skip:0,
+      skip, 
       take: limit,
       orderBy: {
         createdAt: "desc",
@@ -147,9 +152,9 @@ async function getUsersWithStats(req, res) {
         },
         task: {
           where: {
-            isCompleted: false, 
+            isCompleted: false,
           },
-          take: 5, 
+          take: 5,
           orderBy: {
             createdAt: "desc",
           },
@@ -157,31 +162,28 @@ async function getUsersWithStats(req, res) {
       },
     });
 
-  
     const formattedUsers = users.map((user) => ({
       id: user.id,
       name: user.name,
       email: user.email,
       createdAt: user.createdAt,
       _count: user._count,
-      Task: user.Task,
+      Task: user.task, 
     }));
-
 
     const totalPages = Math.ceil(totalUsers / limit);
 
     return res.status(200).json({
-  users: formattedUsers,
-
-  pagination: {
-    page,
-    limit,
-    total: totalUsers,
-    pages: totalPages,
-    hasNext: page < totalPages,
-    hasPrev: page > 1,
-  },
-});
+      users: formattedUsers,
+      pagination: {
+        page,
+        limit,
+        total: totalUsers,
+        pages: totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    });
   } catch (error) {
     console.error("getUsersWithStats error:", error);
     return res.status(500).json({
@@ -192,6 +194,6 @@ async function getUsersWithStats(req, res) {
 
 module.exports = {
   getUserAnalytics,
-  getUsersWithStats,
   searchTasks,
+  getUsersWithStats,
 };

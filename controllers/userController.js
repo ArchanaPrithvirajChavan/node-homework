@@ -68,7 +68,8 @@ async function register(req, res, next) {
   
       return { user: newUser, welcomeTasks };
     });
-
+ console.log("REGISTER HIT");
+    console.log("RESULT:", result);
     global.user_id = result.user.id;
 
     return res.status(201).json({
