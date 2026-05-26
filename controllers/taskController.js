@@ -3,8 +3,9 @@ const { taskSchema,patchTaskSchema } = require("../validation/taskSchema");
 const prisma = require("../db/prisma");
 
 // -------------------- CREATE --------------------
+
 async function create(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -16,13 +17,14 @@ async function create(req, res) {
     return res.status(400).json({ message: error.message });
   }
 
+  // eslint-disable-next-line no-useless-catch
   try {
     const task = await prisma.task.create({
       data: {
         title: value.title,
         isCompleted: value.isCompleted ?? false,
         priority: value.priority || "medium",
-        userId: global.user_id,
+        userId: req.user.id,
       },
       select: {
         id: true,
@@ -39,22 +41,18 @@ async function create(req, res) {
       },
     });
 
-  // Prisma returns the relation as `user` (lowercase). The tests expect a
-  // top-level `User` property, so copy the relation to `User` to match the
-  // expected response shape.
-  const taskResp = Object.assign({}, task, { User: task.user });
-  delete taskResp.user;
+    const taskResp = Object.assign({}, task, { User: task.user });
+    delete taskResp.user;
 
-  return res.status(201).json(taskResp);
+    return res.status(201).json(taskResp);
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
+    throw error;
   }
 }
-
 // -------------------- BULK CREATE --------------------
-exports.bulkCreate = async (req, res, next) => {
-  if (!global.user_id) {
+async function bulkCreate(req, res, next)  {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -82,7 +80,7 @@ exports.bulkCreate = async (req, res, next) => {
       title: value.title,
       isCompleted: value.isCompleted ?? false,
       priority: value.priority || "medium",
-      userId: global.user_id,
+      userId: req.user.id,
     });
   }
 
@@ -103,7 +101,7 @@ exports.bulkCreate = async (req, res, next) => {
 
 // -------------------- INDEX --------------------
 async function index(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -143,7 +141,7 @@ async function index(req, res) {
   }
 
   const whereClause = {
-    userId: global.user_id,
+    userId: req.user.id,
   };
 
   if (req.query.find) {
@@ -201,7 +199,7 @@ async function index(req, res) {
 
 // -------------------- SHOW --------------------
 async function show(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -210,7 +208,7 @@ async function show(req, res) {
   const task = await prisma.task.findFirst({
     where: {
       id: Number(id),
-      userId: global.user_id,
+      userId: req.user.id,
     },
     select: {
       id: true,
@@ -240,7 +238,7 @@ async function show(req, res) {
 
 // -------------------- UPDATE --------------------
 async function update(req, res, next) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -264,7 +262,7 @@ async function update(req, res, next) {
       where: {
         id_userId: {
           id: Number(id),
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       data,
@@ -289,7 +287,7 @@ async function update(req, res, next) {
 
 // -------------------- DELETE --------------------
 async function deleteTask(req, res, next) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -300,7 +298,7 @@ async function deleteTask(req, res, next) {
       where: {
         id_userId: {
           id: Number(id),
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       select: {
@@ -320,7 +318,7 @@ async function deleteTask(req, res, next) {
 
 module.exports = {
   create,
-  bulkCreate: exports.bulkCreate,
+  bulkCreate:bulkCreate,
   index,
   show,
   update,

@@ -1,7 +1,7 @@
 # Node.js Fundamentals
 
 ## What is Node.js?
-Answer- Node is a runtine environment that allows you to run JavaScript outside the browser, typically on the server.
+Answer- Node is a runtime environment that allows you to run JavaScript outside the browser, typically on the server.
    Built on V8 engine.
    Used event-driven, non-blocking I/O
    Great for handling many requests efficiently

@@ -1,5 +1,24 @@
 const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
+const { randomUUID } = require("crypto"); //Generates a unique random string.
+const jwt = require("jsonwebtoken");
+
+const cookieFlags = () => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", 
+    sameSite: "Strict",
+  };
+};
+
+const setJwtCookie = (req, res, user) => {
+
+  const payload = { id: user.id, csrfToken: randomUUID() };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); 
+
+  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); 
+  return payload.csrfToken; 
+};
 
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
@@ -66,13 +85,14 @@ await tx.task.createMany({
       return { user: newUser, welcomeTasks };
     });
  
-    global.user_id = result.user.id;
+   const csrfToken = setJwtCookie(req, res, result.user);
 
-    return res.status(201).json({
-      user: result.user,
-      welcomeTasks: result.welcomeTasks,
-      transactionStatus: "success",
-    });
+return res.status(201).json({
+  user: result.user,
+  welcomeTasks: result.welcomeTasks,
+  csrfToken,
+  transactionStatus: "success",
+});
   } catch (err) {
     if (err && err.code === "P2002") {
       return res.status(400).json({
@@ -114,13 +134,15 @@ async function logon(req, res, next) {
       });
     }
 
-    global.user_id = user.id;
+   const csrfToken = setJwtCookie(req, res, user);
+console.log("SIGN SECRET:", process.env.JWT_SECRET);
+return res.status(200).json({
 
-    return res.status(200).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    });
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  csrfToken,
+});
   } catch (err) {
     return next(err);
   }
@@ -128,11 +150,11 @@ async function logon(req, res, next) {
 
 // ---------------- LOGOFF ----------------
 function logoff(req, res) {
-  global.user_id = null;
+ res.clearCookie("jwt", cookieFlags(req));
 
-  return res.status(200).json({
-    message: "Logged off successfully",
-  });
+return res.status(200).json({
+  message: "Logged off successfully",
+});
 }
 
 module.exports = {
