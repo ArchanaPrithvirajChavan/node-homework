@@ -3,11 +3,11 @@ const bcrypt = require("bcrypt");
 const { randomUUID } = require("crypto"); //Generates a unique random string.
 const jwt = require("jsonwebtoken");
 
-const cookieFlags = () => {
+const cookieFlags = (req) => {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", 
-    sameSite: "Strict",
+    secure: (process.env.NODE_ENV === 'production' && { domain: req.hostname }),
+     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
   };
 };
 

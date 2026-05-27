@@ -10,10 +10,10 @@ const cors = require("cors");
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: ["http://localhost:3000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-TOKEN"],
+    allowedHeaders: "CONTENT-TYPE, X-CSRF-TOKEN"
   })
 );
 const userRouter = require("./routes/userRoutes");
