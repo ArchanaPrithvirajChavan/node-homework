@@ -5,18 +5,24 @@ app.set("trust proxy", 1);
 const helmet = require("helmet");
 const { xss } = require("express-xss-sanitizer");
 const rateLimiter = require("express-rate-limit");
+const cors = require("cors");
 
 
-// Middleware imports
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-TOKEN"],
+  })
+);
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
-//const authMiddleware = require("./middleware/auth");
+
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
 const analyticsRoutes=require("./routes/analyticsRoutes")
-global.user_id = null;
-global.users = [];
-global.tasks = [];
+
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
@@ -63,7 +69,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// 404 handler
 app.use(notFound);
 
 
