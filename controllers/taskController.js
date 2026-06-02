@@ -99,13 +99,13 @@ async function bulkCreate(req, res, next)  {
   }
 };
 
-// -------------------- INDEX --------------------
-async function index(req, res) {
+// -------------------- INDEX -------------------
+ function index(req, res) {
   if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
-  const getOrderBy = (query) => {
+  function getOrderBy(query) {
     const validSortFields = [
       "title",
       "priority",
@@ -122,11 +122,10 @@ async function index(req, res) {
     }
 
     return { createdAt: "desc" };
-  };
+  }
 
   let page = parseInt(req.query.page) || 1;
   let limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
 
   if (page < 1) {
     return res.status(400).json({
@@ -139,6 +138,8 @@ async function index(req, res) {
       message: "Limit must be between 1 and 100",
     });
   }
+
+  const skip = (page - 1) * limit;
 
   const whereClause = {
     userId: req.user.id,
@@ -171,9 +172,11 @@ async function index(req, res) {
     },
   });
 
-  const totalTasks = await prisma.task.count({
-    where: whereClause,
-  });
+  const totalTasks = await prisma.task.count({ where: whereClause });
+
+  if (!tasks || tasks.length === 0) {
+    return res.status(404).json({ message: "No tasks found" });
+  }
 
   const pagination = {
     page,
@@ -183,7 +186,6 @@ async function index(req, res) {
     hasNext: page * limit < totalTasks,
     hasPrev: page > 1,
   };
-
 
   const tasksResp = tasks.map((t) => {
     const copy = Object.assign({}, t, { User: t.user });

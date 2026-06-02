@@ -47,9 +47,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-/* =========================
-   TASK CREATION TESTS
-========================= */
+
 
 describe("testing task creation", () => {
 
@@ -127,9 +125,7 @@ describe("testing task creation", () => {
   });
 });
 
-/* =========================
-   TASK LIST (INDEX)
-========================= */
+
 
 describe("test getting created tasks", () => {
 
@@ -201,9 +197,6 @@ describe("test getting created tasks", () => {
   });
 });
 
-/* =========================
-   SHOW (SINGLE TASK)
-========================= */
 
 describe("test show task", () => {
 
@@ -247,9 +240,7 @@ describe("test show task", () => {
   });
 });
 
-/* =========================
-   UPDATE + DELETE
-========================= */
+
 
 describe("update and delete tasks", () => {
 
