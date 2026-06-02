@@ -1,7 +1,7 @@
 require("dotenv").config();
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 
-const prisma = require("../../db/prisma");
+const prisma = require("../db/prisma");
 const httpMocks = require("node-mocks-http");
 const EventEmitter = require("events");
 const cookie = require("cookie");
@@ -242,7 +242,7 @@ describe("Testing JWT middleware", () => {
 
     expect(next).toHaveBeenCalled();
 
-    lastReq = req; // save for test 65
+    lastReq = req;
   });
 
   it("65. req.user.id is set correctly", () => {

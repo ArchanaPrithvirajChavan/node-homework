@@ -1,9 +1,9 @@
 require("dotenv").config();
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 
-const prisma = require("../../db/prisma");
+const prisma = require("../db/prisma");
 const httpMocks = require("node-mocks-http");
-const EventEmitter = require("events");
+const { EventEmitter } = require("events");
 
 const waitForRouteHandlerCompletion = require("./waitForRouteHandlerCompletion");
 
@@ -13,7 +13,9 @@ const {
   create,
   update,
   deleteTask,
-} = require("../taskController");
+} = require("../controllers/taskController")
+
+
 
 // globals
 let user1 = null;
@@ -78,7 +80,7 @@ describe("testing task creation", () => {
       body: { title: "first task" },
     });
 
-    req.user = { id: "asd" };
+    req.user = { id: 999 };
 
     saveRes = httpMocks.createResponse({
       eventEmitter: EventEmitter,
@@ -177,24 +179,20 @@ describe("test getting created tasks", () => {
   });
 
   it("25. user2 cannot access tasks", async () => {
-    expect.assertions(1);
-
-    const req = httpMocks.createRequest({
-      method: "GET",
-    });
-
-    req.user = { id: user2.id };
-
-    const res = httpMocks.createResponse({
-      eventEmitter: EventEmitter,
-    });
-
-    try {
-      await waitForRouteHandlerCompletion(index, req, res);
-    } catch (e) {
-      expect(e.statusCode || e.name).toBe(404);
-    }
+  const req = httpMocks.createRequest({
+    method: "GET",
   });
+
+  req.user = { id: user2.id };
+
+  const res = httpMocks.createResponse({
+    eventEmitter: EventEmitter,
+  });
+
+  await waitForRouteHandlerCompletion(index, req, res);
+
+  expect(res.statusCode).toBe(404);
+});
 });
 
 
@@ -219,25 +217,21 @@ describe("test show task", () => {
   });
 
   it("27. user2 cannot retrieve task", async () => {
-    expect.assertions(1);
-
-    const req = httpMocks.createRequest({
-      method: "GET",
-    });
-
-    req.user = { id: user2.id };
-    req.params = { id: saveTaskId.toString() };
-
-    const res = httpMocks.createResponse({
-      eventEmitter: EventEmitter,
-    });
-
-    try {
-      await waitForRouteHandlerCompletion(show, req, res);
-    } catch (e) {
-      expect(e.name).toBe("NotFoundError");
-    }
+  const req = httpMocks.createRequest({
+    method: "GET",
   });
+
+  req.user = { id: user2.id };
+  req.params = { id: saveTaskId.toString() };
+
+  const res = httpMocks.createResponse({
+    eventEmitter: EventEmitter,
+  });
+
+  await waitForRouteHandlerCompletion(show, req, res);
+
+  expect(res.statusCode).toBe(404);
+});
 });
 
 
@@ -277,33 +271,26 @@ describe("update and delete tasks", () => {
       eventEmitter: EventEmitter,
     });
 
-    try {
-      await waitForRouteHandlerCompletion(update, req, res);
-    } catch (e) {
-      expect(e.statusCode || e.name).toBe(404);
-    }
+    await waitForRouteHandlerCompletion(index, req, res);
+expect(res.statusCode).toBe(404);
   });
 
   it("30. user2 cannot delete task", async () => {
-    expect.assertions(1);
-
-    const req = httpMocks.createRequest({
-      method: "DELETE",
-    });
-
-    req.user = { id: user2.id };
-    req.params = { id: saveTaskId.toString() };
-
-    const res = httpMocks.createResponse({
-      eventEmitter: EventEmitter,
-    });
-
-    try {
-      await waitForRouteHandlerCompletion(deleteTask, req, res);
-    } catch (e) {
-      expect(e.statusCode || e.name).toBe(404);
-    }
+  const req = httpMocks.createRequest({
+    method: "DELETE",
   });
+
+  req.user = { id: user2.id };
+  req.params = { id: saveTaskId.toString() };
+
+  const res = httpMocks.createResponse({
+    eventEmitter: EventEmitter,
+  });
+
+  await waitForRouteHandlerCompletion(deleteTask, req, res);
+
+  expect(res.statusCode).toBe(404);
+});
 
   it("31. user1 can delete task", async () => {
     const req = httpMocks.createRequest({

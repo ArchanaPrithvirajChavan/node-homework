@@ -5,13 +5,13 @@
   "main": "app.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon app",
-    "test": "jest",
-    "tdd": "./tdd.sh",
-    "start": "node app.js",
-   "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js"
-  },
+  "dev": "nodemon app",
   "test": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --detectOpenHandles",
+  "tdd": "./tdd.sh",
+  "start": "node app.js",
+  "lesson9TDD": "NODE_ENV=test jest --testPathPatterns=test/ --verbose --maxWorkers=1 --config ./lesson9TDD/jestConfig/jest.config.js"
+},
+  
   "author": "Code the Dream",
   "license": "MIT",
   "dependencies": {
