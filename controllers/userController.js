@@ -2,6 +2,7 @@ const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
 const { randomUUID } = require("crypto"); //Generates a unique random string.
 const jwt = require("jsonwebtoken");
+const { userSchema } = require("../validation/userSchema");
 
 const cookieFlags = (req) => {
   return {
@@ -23,14 +24,26 @@ const setJwtCookie = (req, res, user) => {
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
   try {
-    let { name, email, password } = req.body;
+    // 1. VALIDATE FIRST
+    const { error, value } = userSchema.validate(req.body, {
+      abortEarly: false,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        message: error.details.map((d) => d.message),
+      });
+    }
+
+    // 2. USE VALIDATED DATA ONLY
+    let { name, email, password } = value;
 
     email = email.toLowerCase().trim();
 
+    // 3. NOW hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create user
       const newUser = await tx.user.create({
         data: {
           name,
@@ -45,35 +58,30 @@ async function register(req, res, next) {
         },
       });
 
-      // 2. Welcome tasks
       const welcomeTasksData = [
-  {
-    title: "Complete your profile",
-    priority: "medium",
-    userId: newUser.id,
-  },
-  {
-    title: "Add your first task",
-    priority: "high",
-    userId: newUser.id,
-  },
-  {
-    title: "Explore the app",
-    priority: "low",
-    userId: newUser.id,
-  },
-];
+        {
+          title: "Complete your profile",
+          priority: "medium",
+          userId: newUser.id,
+        },
+        {
+          title: "Add your first task",
+          priority: "high",
+          userId: newUser.id,
+        },
+        {
+          title: "Explore the app",
+          priority: "low",
+          userId: newUser.id,
+        },
+      ];
 
-await tx.task.createMany({
-  data: welcomeTasksData,
-});
-      // 3. Fetch created tasks
+      await tx.task.createMany({ data: welcomeTasksData });
+
       const welcomeTasks = await tx.task.findMany({
         where: {
           userId: newUser.id,
-          title: {
-            in: welcomeTasksData.map((t) => t.title),
-          },
+          title: { in: welcomeTasksData.map((t) => t.title) },
         },
         select: {
           id: true,
@@ -84,15 +92,16 @@ await tx.task.createMany({
 
       return { user: newUser, welcomeTasks };
     });
- 
-   const csrfToken = setJwtCookie(req, res, result.user);
 
-return res.status(201).json({
-  user: result.user,
-  welcomeTasks: result.welcomeTasks,
-  csrfToken,
-  transactionStatus: "success",
-});
+    const csrfToken = setJwtCookie(req, res, result.user);
+
+    return res.status(201).json({
+      user: result.user,
+      welcomeTasks: result.welcomeTasks,
+      csrfToken,
+      transactionStatus: "success",
+    });
+
   } catch (err) {
     if (err && err.code === "P2002") {
       return res.status(400).json({
@@ -100,12 +109,10 @@ return res.status(201).json({
       });
     }
 
-  
     console.error(err);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
-
 // ---------------- LOGON ----------------
 async function logon(req, res, next) {
   try {
