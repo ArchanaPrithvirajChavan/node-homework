@@ -32,11 +32,14 @@ beforeAll(async () => {
   global.user_id = null;
 });
 
+// eslint-disable-next-line no-undef
 afterAll(async () => {
   await prisma.$disconnect();
 });
 
+// eslint-disable-next-line no-undef
 describe("testing logon, register, and logoff with transactions", () => {
+  // eslint-disable-next-line no-undef
   it("You can register a user with welcome tasks.", async () => {
     const req = httpMocks.createRequest({
       method: "POST",

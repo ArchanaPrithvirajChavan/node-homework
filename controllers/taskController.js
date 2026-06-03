@@ -1,9 +1,11 @@
-const { taskSchema } = require("../validation/taskSchema");
+const { taskSchema,patchTaskSchema } = require("../validation/taskSchema");
+
 const prisma = require("../db/prisma");
 
 // -------------------- CREATE --------------------
+
 async function create(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -15,29 +17,45 @@ async function create(req, res) {
     return res.status(400).json({ message: error.message });
   }
 
+  // eslint-disable-next-line no-useless-catch
   try {
     const task = await prisma.task.create({
       data: {
         title: value.title,
-        isCompleted: value.isCompleted || false,
-        userId: global.user_id,
+        isCompleted: value.isCompleted ?? false,
+        priority: value.priority || "medium",
+        userId: req.user.id,
       },
       select: {
         id: true,
         title: true,
         isCompleted: true,
+        priority: true,
+        createdAt: true,
+        user: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
-    return res.status(201).json(task);
+    const taskResp = Object.assign({}, task, { User: task.user });
+    delete taskResp.user;
+
+    return res.status(201).json(taskResp);
+
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Internal server error" });
+    throw error;
   }
 }
-
 // -------------------- BULK CREATE --------------------
-exports.bulkCreate = async (req, res, next) => {
+async function bulkCreate(req, res, next)  {
+  if (!req.user.id) {
+    return res.status(401).json({ message: "Login required" });
+  }
+
   const { tasks } = req.body;
 
   if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
@@ -60,9 +78,9 @@ exports.bulkCreate = async (req, res, next) => {
 
     validTasks.push({
       title: value.title,
-      isCompleted: value.isCompleted || false,
+      isCompleted: value.isCompleted ?? false,
       priority: value.priority || "medium",
-      userId: global.user_id,
+      userId: req.user.id,
     });
   }
 
@@ -83,7 +101,7 @@ exports.bulkCreate = async (req, res, next) => {
 
 // -------------------- INDEX --------------------
 async function index(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -106,13 +124,24 @@ async function index(req, res) {
     return { createdAt: "desc" };
   };
 
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
-  
+  if (page < 1) {
+    return res.status(400).json({
+      message: "Page must be greater than or equal to 1",
+    });
+  }
+
+  if (limit < 1 || limit > 100) {
+    return res.status(400).json({
+      message: "Limit must be between 1 and 100",
+    });
+  }
+
   const whereClause = {
-    userId: global.user_id,
+    userId: req.user.id,
   };
 
   if (req.query.find) {
@@ -133,7 +162,7 @@ async function index(req, res) {
       isCompleted: true,
       priority: true,
       createdAt: true,
-      User: {
+      user: {
         select: {
           name: true,
           email: true,
@@ -142,11 +171,7 @@ async function index(req, res) {
     },
   });
 
-  if (tasks.length === 0) {
-    return res.status(404).json({ message: "No tasks found" });
-  }
-
-  /*const totalTasks = await prisma.task.count({
+  const totalTasks = await prisma.task.count({
     where: whereClause,
   });
 
@@ -157,14 +182,24 @@ async function index(req, res) {
     pages: Math.ceil(totalTasks / limit),
     hasNext: page * limit < totalTasks,
     hasPrev: page > 1,
-  };*/
+  };
 
- return res.status(200).json(tasks);
+
+  const tasksResp = tasks.map((t) => {
+    const copy = Object.assign({}, t, { User: t.user });
+    delete copy.user;
+    return copy;
+  });
+
+  return res.status(200).json({
+    tasks: tasksResp,
+    pagination,
+  });
 }
 
 // -------------------- SHOW --------------------
 async function show(req, res) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -173,12 +208,20 @@ async function show(req, res) {
   const task = await prisma.task.findFirst({
     where: {
       id: Number(id),
-      userId: global.user_id,
+      userId: req.user.id,
     },
     select: {
       id: true,
       title: true,
       isCompleted: true,
+      priority: true,
+      createdAt: true,
+      user: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
@@ -186,31 +229,49 @@ async function show(req, res) {
     return res.status(404).json({ message: "Task not found" });
   }
 
-  return res.status(200).json(task);
+  
+  const taskResp = Object.assign({}, task, { User: task.user });
+  delete taskResp.user;
+
+  return res.status(200).json(taskResp);
 }
 
 // -------------------- UPDATE --------------------
 async function update(req, res, next) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
   const { id } = req.params;
-  const fields = req.body;
+
+  const { error, value } = patchTaskSchema.validate(req.body, {
+    abortEarly: false,
+  });
+
+  if (error) {
+    return res.status(400).json({ message: error.message });
+  }
+
+  const data = {};
+  if (value.title !== undefined) data.title = value.title;
+  if (value.isCompleted !== undefined) data.isCompleted = value.isCompleted;
+  if (value.priority !== undefined) data.priority = value.priority;
 
   try {
     const updatedTask = await prisma.task.update({
       where: {
         id_userId: {
           id: Number(id),
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
-      data: fields,
+      data,
       select: {
         id: true,
         title: true,
         isCompleted: true,
+        priority: true,
+        createdAt: true,
       },
     });
 
@@ -223,9 +284,10 @@ async function update(req, res, next) {
   }
 }
 
+
 // -------------------- DELETE --------------------
 async function deleteTask(req, res, next) {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res.status(401).json({ message: "Login required" });
   }
 
@@ -236,7 +298,7 @@ async function deleteTask(req, res, next) {
       where: {
         id_userId: {
           id: Number(id),
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       select: {
@@ -256,7 +318,7 @@ async function deleteTask(req, res, next) {
 
 module.exports = {
   create,
-  bulkCreate: exports.bulkCreate,
+  bulkCreate:bulkCreate,
   index,
   show,
   update,

@@ -1,21 +1,30 @@
 const express = require("express");
 const app = express();
 const prisma =require("./db/prisma")
+app.set("trust proxy", 1);
+const helmet = require("helmet");
+const { xss } = require("express-xss-sanitizer");
+const rateLimiter = require("express-rate-limit");
+const cors = require("cors");
 
 
-
-// Middleware imports
+app.use(
+  cors({
+    origin: ["http://localhost:3000"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: "CONTENT-TYPE, X-CSRF-TOKEN"
+  })
+);
 const userRouter = require("./routes/userRoutes");
 const taskRouter = require("./routes/taskRoutes");
-const authMiddleware = require("./middleware/auth");
+
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
+const analyticsRoutes=require("./routes/analyticsRoutes")
 
-// ========================
-global.user_id = null;
-global.users = [];
-global.tasks = [];
-// ========================
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
 
 // Logger middleware
 app.use((req, res, next) => {
@@ -25,13 +34,22 @@ app.use((req, res, next) => {
   );
   next();
 });
-
+app.use(helmet());
 app.use(express.json({ limit: "1kb" }));
+app.use(xss());
+
+app.use(
+  rateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+  })
+);
+
 
 // Routes
 app.use("/api/users", userRouter);
-app.use("/api/tasks", authMiddleware, taskRouter);
-
+app.use("/api/tasks",  taskRouter);
+app.use("/api/analytics", analyticsRoutes)
 // Test routes
 app.get("/", (req, res) => {
   res.status(200).json({ message: "GET success" });
@@ -51,7 +69,6 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// 404 handler
 app.use(notFound);
 
 

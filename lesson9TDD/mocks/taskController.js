@@ -53,7 +53,7 @@ exports.index = async (req, res) => {
   if (req.query.fields) {
     select = getFields(req.query.fields);
     if (!select) {
-      // no task fields specified, not allowed
+    
       return res.status(400).json({
         message:
           "When specifying fields, at least one task field must be included.",
@@ -66,7 +66,7 @@ exports.index = async (req, res) => {
       isCompleted: true,
       priority: true,
       createdAt: true,
-      userId: true, // bug
+      userId: true, 
       User: {
         select: {
           name: true,
@@ -77,10 +77,10 @@ exports.index = async (req, res) => {
   }
 
   const tasks = await prisma.task.findMany({
-    // where: {
-    //   userId: req.user.id, bug
-    //   ...whereClause(req.query),
-    // },
+     where: {
+       userId: req.user.id, bug
+      ...whereClause(req.query),
+     },
     select,
     skip: skip,
     take: limit,
@@ -90,7 +90,7 @@ exports.index = async (req, res) => {
     return res.status(404).json({ message: "No tasks found for user" });
   }
   const totalTasks = await prisma.task.count({
-    // where: { userId: req.user.id }, bug
+     where: { userId: req.user.id }, 
   });
   const pagination = {
     page,
@@ -118,7 +118,7 @@ exports.show = async (req, res) => {
   const task = await prisma.task.findUnique({
     where: {
       id,
-      // userId: req.user.id, bug
+       userId: req.user.id, 
     },
     select: {
       id: true,

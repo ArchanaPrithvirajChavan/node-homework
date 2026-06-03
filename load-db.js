@@ -113,7 +113,7 @@ async function loadCsvToPostgres(csvFilePath, tableName) {
           for (const row of results) {
             const columns = Object.keys(row).join(", ");
             const values = Object.values(row)
-              .map((value) => `'${value.replace(/'/g, "''")}'`) // Escape single quotes
+              .map((value) => `'${value.replace(/'/g, "''")}'`) 
               .join(", ");
             if (count == 0) {
               stmt = `INSERT INTO ${tableName} (${columns}) VALUES (${values})`;

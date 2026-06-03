@@ -1,144 +1,164 @@
-
-//const { response, json } = require("express");
-const prisma = require("../db/prisma")
+const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
+const { randomUUID } = require("crypto"); //Generates a unique random string.
+const jwt = require("jsonwebtoken");
+
+const cookieFlags = (req) => {
+  return {
+    httpOnly: true,
+    secure: (process.env.NODE_ENV === 'production' && { domain: req.hostname }),
+     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
+  };
+};
+
+const setJwtCookie = (req, res, user) => {
+
+  const payload = { id: user.id, csrfToken: randomUUID() };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); 
+
+  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); 
+  return payload.csrfToken; 
+};
 
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
-  const { name, email, password } = req.body;
+  try {
+    let { name, email, password } = req.body;
 
- const existingemail=await prisma.user.findUnique({where:
-  {email},
- })
- if (existingemail){
-   return res.status(400).json({message:"email already exist"})
- }
-  const hashedPassword = await bcrypt.hash(password, 10);
+    email = email.toLowerCase().trim();
 
- try {
-  const result = await prisma.$transaction(async (tx) => {
-    // Create user account
-    const newUser = await tx.user.create({
-      data: { email, name, hashedPassword },
-      select: { id: true, email: true, name: true }
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create user
+      const newUser = await tx.user.create({
+        data: {
+          name,
+          email,
+          hashedPassword,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true,
+        },
+      });
+
+      // 2. Welcome tasks
+      const welcomeTasksData = [
+  {
+    title: "Complete your profile",
+    priority: "medium",
+    userId: newUser.id,
+  },
+  {
+    title: "Add your first task",
+    priority: "high",
+    userId: newUser.id,
+  },
+  {
+    title: "Explore the app",
+    priority: "low",
+    userId: newUser.id,
+  },
+];
+
+await tx.task.createMany({
+  data: welcomeTasksData,
+});
+      // 3. Fetch created tasks
+      const welcomeTasks = await tx.task.findMany({
+        where: {
+          userId: newUser.id,
+          title: {
+            in: welcomeTasksData.map((t) => t.title),
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          isCompleted: true,
+        },
+      });
+
+      return { user: newUser, welcomeTasks };
     });
+ 
+   const csrfToken = setJwtCookie(req, res, result.user);
 
-    // Create 3 welcome tasks using createMany
-    const welcomeTaskData = [
-      { title: "Complete your profile", userId: newUser.id, priority: "medium" },
-      { title: "Add your first task", userId: newUser.id, priority: "high" },
-      { title: "Explore the app", userId: newUser.id, priority: "low" }
-    ];
-    await tx.task.createMany({ data: welcomeTaskData });
+return res.status(201).json({
+  user: result.user,
+  welcomeTasks: result.welcomeTasks,
+  csrfToken,
+  transactionStatus: "success",
+});
+  } catch (err) {
+    if (err && err.code === "P2002") {
+      return res.status(400).json({
+        message: "Email already registered",
+      });
+    }
 
-    // Fetch the created tasks to return them
-    const welcomeTasks = await tx.task.findMany({
-      where: {
-        userId: newUser.id,
-        title: { in: welcomeTaskData.map(t => t.title) }
-      },
-      select: {
-        id: true,
-        title: true,
-        isCompleted: true,
-        userId: true,
-        priority: true
-      }
-    });
-
-    return { user: newUser, welcomeTasks };
-  });
-
-  // Store the user ID globally for session management
-  global.user_id = result.user.id;
   
-  // Send response with status 201
-  res.status(201);
-  res.json({
-    user: result.user,
-    welcomeTasks: result.welcomeTasks,
-    transactionStatus: "success"
-  });
-  return;
-} catch (err) {
-  if (err.code === "P2002") {
-    // send the appropriate error back -- the email was already registered
-    return res.status(400).json({ error: "Email already registered" });
-  } else {
-    return next(err); // the error handler takes care of other errors
+    console.error(err);
+    return res.status(500).json({ message: "Internal server error" });
   }
-}}
+}
 
 // ---------------- LOGON ----------------
-async function logon(req, res) {
-  let { email, password } = req.body;
+async function logon(req, res, next) {
+  try {
+    let { email, password } = req.body;
 
-  email = email.toLowerCase();
+    email = email.toLowerCase().trim();
 
-const user = await prisma.user.findUnique({ where: { email }});
-                        
-  
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  if (!user) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
-
-
-
-  const match = await bcrypt.compare(password, user.hashedPassword);
-
-  if (!match) {
-    return res.status(401).json({ message: "Invalid credentials" });
-  }
- global.user_id  = user.id;
-
-  return res.status(200).json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-  });
-}
-async function show(req,res){
-   const userId = parseInt(req.params.id);
-  
-  if (isNaN(userId)) {
-    return res.status(400).json({ error: "Invalid user ID" });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      Task: {
-        where: { isCompleted: false },
-        select: { 
-          id: true, 
-          title: true, 
-          priority: true,
-          createdAt: true 
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }
+    if (!user) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
     }
-  });
 
-  if (!user) {
-    return res.status(404).json({ message: "User not found" });
+    const passwordMatch = await bcrypt.compare(
+      password,
+      user.hashedPassword
+    );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        message: "Invalid credentials",
+      });
+    }
+
+   const csrfToken = setJwtCookie(req, res, user);
+console.log("SIGN SECRET:", process.env.JWT_SECRET);
+return res.status(200).json({
+
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  csrfToken,
+});
+  } catch (err) {
+    return next(err);
   }
-
-  res.status(200).json(user);
-};
-function logoff(req, res) {
-  global.user_id = null;
-  return res.status(200).json({ message: "Logged off" });
 }
+
+// ---------------- LOGOFF ----------------
+function logoff(req, res) {
+ res.clearCookie("jwt", cookieFlags(req));
+
+return res.status(200).json({
+  message: "Logged off successfully",
+});
+}
+
 module.exports = {
   register,
   logon,
-  show,
   logoff,
 };
