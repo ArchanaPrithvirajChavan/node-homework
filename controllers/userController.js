@@ -1,7 +1,9 @@
 const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
+const userSchema = require("../validation/userSchema").userSchema;
 const { randomUUID } = require("crypto"); //Generates a unique random string.
 const jwt = require("jsonwebtoken");
+const { StatusCodes } = require("http-status-codes");
 
 const cookieFlags = (req) => {
   return {
@@ -23,6 +25,44 @@ const setJwtCookie = (req, res, user) => {
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
   try {
+     let isPerson = false;
+  if (req.body.recaptchaToken) {
+    const token = req.body.recaptchaToken;
+    const params = new URLSearchParams();
+    params.append("secret", process.env.RECAPTCHA_SECRET);
+    params.append("response", token);
+    params.append("remoteip", req.ip);
+    const response = await fetch(
+      // might throw an error that would cause a 500 from the error handler
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        body: params.toString(),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      },
+    );
+
+
+    const data = await response.json();
+    if (data.success) isPerson = true;
+    delete req.body.recaptchaToken;
+  } else if (
+    process.env.RECAPTCHA_BYPASS &&
+    req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
+  ) {
+    // might be a test environment
+    isPerson = true;
+  }
+  if (!isPerson) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "Bot verification failed. Please complete the reCAPTCHA." });
+  }
+    const { error } = userSchema.validate(req.body, { abortEarly: false });
+
+  if (error) return next(error);
     let { name, email, password } = req.body;
 
     email = email.toLowerCase().trim();
@@ -109,6 +149,10 @@ return res.status(201).json({
 // ---------------- LOGON ----------------
 async function logon(req, res, next) {
   try {
+    if (!req.body || !req.body.email || !req.body.password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+     
     let { email, password } = req.body;
 
     email = email.toLowerCase().trim();
