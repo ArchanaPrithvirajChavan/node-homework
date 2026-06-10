@@ -12,8 +12,8 @@ module.exports =  (req, res, next) => {
   if (!token) {
     return send401(res);
   } 
-  console.log("VERIFY SECRET:", process.env.JWT_SECRET);
-  console.log("COOKIES FROM REQUEST:", req.cookies);
+ 
+  
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     
     

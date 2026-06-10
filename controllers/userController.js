@@ -24,15 +24,18 @@ const setJwtCookie = (req, res, user) => {
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
   try {
-     let isPerson = false;
-  if (req.body.recaptchaToken) {
+let isPerson = false;
+
+if (req.body.recaptchaToken) {
+  try {
     const token = req.body.recaptchaToken;
     const params = new URLSearchParams();
+
     params.append("secret", process.env.RECAPTCHA_SECRET);
     params.append("response", token);
     params.append("remoteip", req.ip);
+
     const response = await fetch(
-      // might throw an error that would cause a 500 from the error handler
       "https://www.google.com/recaptcha/api/siteverify",
       {
         method: "POST",
@@ -40,25 +43,34 @@ async function register(req, res, next) {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-      },
+      }
     );
 
+    if (!response.ok) {
+      console.error(
+        `reCAPTCHA API returned ${response.status} ${response.statusText}`
+      );
+    } else {
+      const data = await response.json();
+      if (data.success) isPerson = true;
+    }
+  } catch (error) {
+    console.error("reCAPTCHA verification error:", error);
+  }
 
-    const data = await response.json();
-    if (data.success) isPerson = true;
-    delete req.body.recaptchaToken;
-  } else if (
-    process.env.RECAPTCHA_BYPASS &&
-    req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
-  ) {
-    // might be a test environment
-    isPerson = true;
-  }
-  if (!isPerson) {
-    return res
-      .status(StatusCodes.BAD_REQUEST)
-      .json({ message: "Bot verification failed. Please complete the reCAPTCHA." });
-  }
+  delete req.body.recaptchaToken;
+} else if (
+  process.env.RECAPTCHA_BYPASS &&
+  req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
+) {
+  isPerson = true;
+}
+
+if (!isPerson) {
+  return res.status(StatusCodes.BAD_REQUEST).json({
+    message: "Bot verification failed. Please complete the reCAPTCHA.",
+  });
+}
     const { error } = userSchema.validate(req.body, { abortEarly: false });
 
   if (error) return next(error);
@@ -178,7 +190,7 @@ async function logon(req, res, next) {
     }
 
    const csrfToken = setJwtCookie(req, res, user);
-console.log("SIGN SECRET:", process.env.JWT_SECRET);
+
 return res.status(200).json({
 
   id: user.id,
