@@ -5,13 +5,12 @@ const { randomUUID } = require("crypto"); //Generates a unique random string.
 const jwt = require("jsonwebtoken");
 const { StatusCodes } = require("http-status-codes");
 
-const cookieFlags = (req) => {
-  return {
-    httpOnly: true,
-    secure: (process.env.NODE_ENV === 'production' && { domain: req.hostname }),
-     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-  };
-};
+const cookieFlags = (req) => ({  
+  httpOnly: true,  
+  secure: process.env.NODE_ENV === 'production',  
+  domain: process.env.NODE_ENV === 'production' ? req.hostname : undefined,  
+  sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  
+});  
 
 const setJwtCookie = (req, res, user) => {
 
