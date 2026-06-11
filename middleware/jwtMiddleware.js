@@ -26,7 +26,9 @@ module.exports =  (req, res, next) => {
     
     if ( ["POST", "PATCH", "PUT", "DELETE", "CONNECT"].includes(req.method)) {
     
-
+     if (decoded.roles){
+      req.user.roles =jwt.decode.roles.split(",")
+     }
       if (req.get("X-CSRF-TOKEN") != decoded.csrfToken) {
         return send401(res);
       }
