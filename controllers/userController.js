@@ -15,10 +15,13 @@ const cookieFlags = (req) => ({
 const setJwtCookie = (req, res, user) => {
 
   const payload = { 
-                   id: user.id, 
+                   id: user.id,
+                    roles: user.roles || "user", 
                    csrfToken: randomUUID(),
-                   ...(user.roles&&{roles:user.roles})
+                   
                   };
+                  console.log("JWT PAYLOAD:", payload); 
+
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); 
 
   res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); 
@@ -91,12 +94,14 @@ if (!isPerson) {
           name,
           email,
           hashedPassword,
+           roles: "user",
         },
         select: {
           id: true,
           name: true,
           email: true,
           createdAt: true,
+          roles:true
         },
       });
 

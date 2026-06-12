@@ -12,7 +12,9 @@ const userSchema = Joi.object({
       "string.pattern.base":
         "Password must be at least 8 characters long and include upper and lower case letters, a number, and a special character.",
     }),
+   
 });
+
 
 
 module.exports = { userSchema };

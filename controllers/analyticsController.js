@@ -2,6 +2,9 @@ const prisma = require("../db/prisma");
 
 // ---------------- GET USER ANALYTICS ----------------
 async function getUserAnalytics(req, res) {
+  console.log("req.params =", req.params);
+console.log("req.params.id =", req.params.id);
+console.log("req.user.id =", req.user.id);
   try {
     if (!req.user.id) {
       return res.status(401).json({ message: "Login required" });
