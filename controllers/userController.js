@@ -1,13 +1,15 @@
 const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
 const userSchema = require("../validation/userSchema").userSchema;
-const { randomUUID } = require("crypto"); //Generates a unique random string.
+const { randomUUID } = require("crypto"); 
 const jwt = require("jsonwebtoken");
 const { StatusCodes } = require("http-status-codes");
 const { OAuth2Client } = require("google-auth-library");
 
 const googleClient = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
 );
 
 const cookieFlags = (req) => ({  
@@ -35,8 +37,17 @@ const setJwtCookie = (req, res, user) => {
 //GoogleLogon
 async function googleLogon(req, res) {
   try {
-    const { authorizationCode } = req.body;
+    console.log("ENV:", {
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  DATABASE_URL: process.env.DATABASE_URL
+});
 
+    console.log("googleLogon called");
+    console.log("Request body:", req.body);
+    const { authorizationCode } = req.body;
+  console.log("authorizationCode")
     if (!authorizationCode) {
       return res
         .status(400)
@@ -45,7 +56,7 @@ async function googleLogon(req, res) {
 
     const { tokens } =
       await googleClient.getToken(authorizationCode);
-
+ console.log(tokens)
     const ticket =
       await googleClient.verifyIdToken({
         idToken: tokens.id_token,

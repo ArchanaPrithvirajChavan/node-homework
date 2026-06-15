@@ -1,1 +1,28 @@
  URL for Render =https://node-homework-taskmanger.onrender.com/
+ extra Feacturs added are
+ 1.Role-Based Access Control
+ 2.OAuth Authentication with Google
+      
+     ## Role-Based Access Control 
+
+ To restrict access to (analytics API) endpoints based on user roles.
+
+A new optional roles field is added to the user model. The field can store a comma-separated list of roles (for example: "manager" or "user"). This allows flexible role assignment without changing the core user structure.
+
+During user login, if the user has assigned roles, those roles are included in the JWT token payload. The authentication jwtMiddleware extracts this information and attaches it to req.user.roles, making it available throughout the request lifecycle.
+
+The /api/analytics endpoint is protected using role-based authorization middleware. Only users with the "manager" role are allowed to access this route. If a user does not have the required role, the request is rejected with a 401 Unauthorized response.
+
+This ensures that sensitive analytics data is only accessible to authorized users, demonstrating a clear separation between authentication (verifying identity) and authorization (verifying permissions).
+
+Both authorized and unauthorized access cases have been tested to ensure correct behavior.
+
+
+
+               ## OAuth Authentication with Google
+
+Implemented Google OAuth 2.0 authentication to allow users to securely sign in using their Google accounts without providing a password directly to the application. The frontend obtains an authorization code from Google and sends it to the backend through the `/api/users/googleLogon` endpoint.
+
+The backend uses Google's `google-auth-library` to exchange the authorization code for user identity information, including the user's name and email address. After successful verification, the application checks whether the user already exists in the database. If no matching user record is found, a new user account is automatically created with a placeholder password value for OAuth users.
+
+Once the user is authenticated, the backend generates a JWT containing the user's information, sets it as an HttpOnly cookie, and returns the user's name and a CSRF token to the frontend. This implementation provides a secure authentication flow while maintaining compatibility with the existing JWT and CSRF protection mechanisms.

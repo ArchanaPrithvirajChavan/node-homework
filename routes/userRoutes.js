@@ -4,7 +4,8 @@ const {register,logon,logoff,googleLogon,}=require("../controllers/userControlle
 const jwtMiddleware = require("../middleware/jwtMiddleware");
 router.route("/register").post(register);
 router.route("/logon").post(logon);
+router.route("/googleLogon").post(googleLogon);
 router.use(jwtMiddleware);
 router.route("/logoff").post(logoff);
-router.route("/googleLogon").post(googleLogon);
+
 module.exports=router;
