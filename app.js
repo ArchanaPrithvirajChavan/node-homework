@@ -10,10 +10,10 @@ const cors = require("cors");
 
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: ["http://localhost:3001"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: "CONTENT-TYPE, X-CSRF-TOKEN"
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-TOKEN"]
   })
 );
 const userRouter = require("./routes/userRoutes");
@@ -35,7 +35,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(helmet());
-app.use(express.json({ limit: "1kb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use(xss());
 
 app.use(
