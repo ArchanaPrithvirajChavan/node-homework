@@ -6,8 +6,13 @@ const requireManager =require("../middleware/roles-baseMiddleware");
   getUsersWithStats,
   searchTasks,
 } = require("../controllers/analyticsController");
+router.use((req, res, next) => {
+  
+  next();
+});
 router.use(jwtMiddleware);
 router.use(requireManager);
+console.log("Analytics middleware hit");
 //all routes for manager only
 router.get("/users/:id", getUserAnalytics);
 

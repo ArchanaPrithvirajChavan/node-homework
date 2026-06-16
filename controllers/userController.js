@@ -1,9 +1,16 @@
 const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
 const userSchema = require("../validation/userSchema").userSchema;
-const { randomUUID } = require("crypto"); //Generates a unique random string.
+const { randomUUID } = require("crypto"); 
 const jwt = require("jsonwebtoken");
 const { StatusCodes } = require("http-status-codes");
+const { OAuth2Client } = require("google-auth-library");
+
+const googleClient = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
 
 const cookieFlags = (req) => ({  
   httpOnly: true,  
@@ -15,15 +22,97 @@ const cookieFlags = (req) => ({
 const setJwtCookie = (req, res, user) => {
 
   const payload = { 
-                   id: user.id, 
+                   id: user.id,
+                    roles: user.roles || "user", 
                    csrfToken: randomUUID(),
-                   ...(user.roles&&{roles:user.roles})
+                   
                   };
+                  console.log("JWT PAYLOAD:", payload); 
+
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); 
 
   res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); 
   return payload.csrfToken; 
 };
+//GoogleLogon
+async function googleLogon(req, res) {
+  try {
+    console.log("ENV:", {
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+  DATABASE_URL: process.env.DATABASE_URL
+});
+
+    console.log("googleLogon called");
+    console.log("Request body:", req.body);
+    const { authorizationCode } = req.body;
+  console.log("authorizationCode")
+    if (!authorizationCode) {
+      return res
+        .status(400)
+        .json({ error: "Authorization code required" });
+    }
+
+    const { tokens } =
+      await googleClient.getToken(authorizationCode);
+ console.log(tokens)
+    const ticket =
+      await googleClient.verifyIdToken({
+        idToken: tokens.id_token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+    const payload = ticket.getPayload();
+
+    const email = payload.email;
+    const name = payload.name;
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          hashedPassword: "GOOGLE_OAUTH_USER",
+        },
+      });
+    }
+
+    const csrfToken = randomUUID();
+
+    const jwtToken = jwt.sign(
+      {
+        id: user.id,
+        csrfToken,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    res.cookie("jwt", jwtToken, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: false,
+    });
+
+    return res.status(200).json({
+      name: user.name,
+      csrfToken,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: "Google authentication failed",
+    });
+  }
+}
 
 // ---------------- REGISTER ----------------
 async function register(req, res, next) {
@@ -91,12 +180,14 @@ if (!isPerson) {
           name,
           email,
           hashedPassword,
+           roles: "user",
         },
         select: {
           id: true,
           name: true,
           email: true,
           createdAt: true,
+          roles:true
         },
       });
 
@@ -220,4 +311,5 @@ module.exports = {
   register,
   logon,
   logoff,
+  googleLogon
 };
