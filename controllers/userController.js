@@ -1,20 +1,24 @@
 const prisma = require("../db/prisma");
 const bcrypt = require("bcrypt");
+const userSchema = require("../validation/userSchema").userSchema;
 const { randomUUID } = require("crypto"); //Generates a unique random string.
 const jwt = require("jsonwebtoken");
 const { userSchema } = require("../validation/userSchema");
 
-const cookieFlags = (req) => {
-  return {
-    httpOnly: true,
-    secure: (process.env.NODE_ENV === 'production' && { domain: req.hostname }),
-     sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',
-  };
-};
+const cookieFlags = (req) => ({  
+  httpOnly: true,  
+  secure: process.env.NODE_ENV === 'production',  
+  domain: process.env.NODE_ENV === 'production' ? req.hostname : undefined,  
+  sameSite: process.env.NODE_ENV === 'production' ? 'None' : 'Lax',  
+});  
 
 const setJwtCookie = (req, res, user) => {
 
-  const payload = { id: user.id, csrfToken: randomUUID() };
+  const payload = { 
+                   id: user.id, 
+                   csrfToken: randomUUID(),
+                   ...(user.roles&&{roles:user.roles})
+                  };
   const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); 
 
   res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); 
@@ -116,6 +120,10 @@ async function register(req, res, next) {
 // ---------------- LOGON ----------------
 async function logon(req, res, next) {
   try {
+    if (!req.body || !req.body.email || !req.body.password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+     
     let { email, password } = req.body;
 
     email = email.toLowerCase().trim();
@@ -142,7 +150,7 @@ async function logon(req, res, next) {
     }
 
    const csrfToken = setJwtCookie(req, res, user);
-console.log("SIGN SECRET:", process.env.JWT_SECRET);
+
 return res.status(200).json({
 
   id: user.id,
