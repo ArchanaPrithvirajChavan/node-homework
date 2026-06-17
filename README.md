@@ -84,7 +84,7 @@ Once the installation is complete, open the Windows Services panel (_Task Manage
 ```
 "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost
 ```
-
+Final submission update for Assignment 11
 After running this command, you will be prompted to enter your PostgreSQL password (the one you created during installation for the **postgres superuser**). When you type the password, you won't see any characters appear on screen (not even asterisks \*\*\*\*). This is normal for security reasons. Just type it and press Enter.
 If the connection is successful, you'll see:
 
