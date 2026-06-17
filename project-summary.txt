@@ -17,8 +17,23 @@ This ensures that sensitive analytics data is only accessible to authorized user
 
 Both authorized and unauthorized access cases have been tested to ensure correct behavior.
 
+Endpoint: Get Analytics
+GET /api/analytics/users/:id
 
+Authorization Rules:
+Only users with role: "manager" can access this endpoint
+Roles are stored in JWT token payload
+Success Response (200):
+{
+  "userId": 25,
+  "totalTasks": 10,
+  "completedTasks": 6
 
+}
+Error Response (401):
+{
+  "message": "No user is authenticated."
+}
                ## OAuth Authentication with Google
 
 Implemented Google OAuth 2.0 authentication to allow users to securely sign in using their Google accounts without providing a password directly to the application. The frontend obtains an authorization code from Google and sends it to the backend through the `/api/users/googleLogon` endpoint.
